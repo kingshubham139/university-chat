@@ -1,21 +1,56 @@
 <!DOCTYPE html>
-<html>
-<head><title>Admin</title></head>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Panel</title>
+
+<style>
+body{
+  font-family:Arial;
+  background:#222;
+  color:#fff;
+  padding:20px;
+}
+.card{
+  background:#333;
+  padding:10px;
+  margin:8px 0;
+  border-radius:6px;
+}
+button{
+  background:#ff4d4f;
+  border:none;
+  padding:5px 10px;
+  color:#fff;
+  cursor:pointer;
+}
+</style>
+</head>
+
 <body>
 <h2>Admin Panel</h2>
-<div id="d"></div>
+<div id="list"></div>
+
 <script>
-const API="university-chat-production.up.railway.app";
+const API = "https://university-chat-production.up.railway.app";
+
 fetch(API+"/admin/messages")
-.then(r=>r.json()).then(m=>{
- m.forEach(x=>{
-  d.innerHTML+=`${x.groupName}: ${x.sender} - ${x.text}
-  <button onclick="del('${x._id}')">X</button><br>`;
- });
+.then(r=>r.json())
+.then(data=>{
+  data.forEach(m=>{
+    list.innerHTML += `
+      <div class="card">
+        <b>${m.groupName}</b> | ${m.sender}: ${m.text}
+        <button onclick="del('${m._id}')">Delete</button>
+      </div>
+    `;
+  });
 });
+
 function del(id){
- fetch(API+"/admin/message/"+id,{method:"DELETE"})
- .then(()=>location.reload());
+  fetch(API+"/admin/message/"+id,{method:"DELETE"})
+  .then(()=>location.reload());
 }
 </script>
 </body>

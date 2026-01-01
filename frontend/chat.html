@@ -1,60 +1,93 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Chat</title>
-<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>University Chat | Login</title>
+
 <style>
-body{margin:0;background:#ece5dd;font-family:Arial}
-.chat{max-width:500px;margin:auto;height:100vh;display:flex;flex-direction:column;background:#fff}
-header{background:#075e54;color:#fff;padding:12px;text-align:center}
-#msgs{flex:1;overflow:auto;padding:10px}
-.msg{padding:8px;margin:6px;border-radius:8px;max-width:70%}
-.me{background:#dcf8c6;margin-left:auto}
-.other{background:#f1f0f0}
-footer{display:flex}
-input{flex:1;padding:12px}
-button{padding:12px;background:#075e54;color:#fff;border:none}
+body{
+  margin:0;
+  height:100vh;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  font-family:Arial;
+  background:linear-gradient(135deg,#1e3c72,#2a5298);
+}
+.box{
+  background:#fff;
+  width:320px;
+  padding:25px;
+  border-radius:12px;
+  box-shadow:0 0 20px rgba(0,0,0,.3);
+}
+h2{text-align:center;margin-bottom:20px}
+input,button{
+  width:100%;
+  padding:10px;
+  margin:8px 0;
+  border-radius:6px;
+  border:1px solid #ccc;
+}
+button{
+  background:#1e3c72;
+  color:#fff;
+  border:none;
+  cursor:pointer;
+}
+button:hover{opacity:.9}
 </style>
 </head>
-<body>
 
-<div class="chat">
-<header id="h"></header>
-<div id="msgs"></div>
-<footer>
-<input id="m" placeholder="Message">
-<button onclick="send()">Send</button>
-</footer>
+<body>
+<div class="box">
+  <h2>University Chat</h2>
+  <input id="username" placeholder="Username">
+  <input id="password" type="password" placeholder="Password">
+  <input id="groupName" placeholder="Group Name">
+  <button onclick="login()">Login</button>
+  <button onclick="register()">Register</button>
 </div>
 
 <script>
-const API="university-chat-production.up.railway.app";
-const user=JSON.parse(localStorage.user);
-h.innerText="Group: "+user.groupName;
+const API = "https://university-chat-production.up.railway.app";
 
-const socket=io(API);
-socket.emit("join",user.groupName);
-
-socket.on("receive",d=>add(d));
-socket.on("deleted",id=>{
- document.getElementById(id)?.remove();
-});
-
-function send(){
- socket.emit("send",{text:m.value,sender:user.username,groupName:user.groupName});
- m.value="";
+function login(){
+  fetch(API+"/login",{
+    method:"POST",
+    headers:{ "Content-Type":"application/json" },
+    body:JSON.stringify({
+      username:username.value,
+      password:password.value,
+      groupName:groupName.value
+    })
+  })
+  .then(r=>r.json())
+  .then(d=>{
+    if(d.success){
+      localStorage.setItem("user",JSON.stringify(d.user));
+      location.href="chat.html";
+    }else{
+      alert(d.msg || "Login failed");
+    }
+  });
 }
 
-function add(d){
- let div=document.createElement("div");
- div.className="msg "+(d.sender==user.username?"me":"other");
- div.id=d._id;
- div.innerHTML=d.text;
- if(d.sender==user.username)
-   div.onclick=()=>socket.emit("delete",d._id);
- msgs.appendChild(div);
- msgs.scrollTop=msgs.scrollHeight;
+function register(){
+  fetch(API+"/register",{
+    method:"POST",
+    headers:{ "Content-Type":"application/json" },
+    body:JSON.stringify({
+      username:username.value,
+      password:password.value,
+      groupName:groupName.value
+    })
+  })
+  .then(r=>r.json())
+  .then(d=>{
+    alert(d.success ? "Registered successfully" : d.msg);
+  });
 }
 </script>
 </body>
