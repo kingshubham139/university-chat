@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,161 +9,82 @@
 
 <style>
 *{box-sizing:border-box}
-body{
-  margin:0;
-  font-family:Arial, Helvetica, sans-serif;
-  background:#e5ddd5;
+body{margin:0;font-family:Arial;background:#e5ddd5}
+.chat{
+  max-width:520px;height:100vh;margin:auto;
+  display:flex;flex-direction:column;background:#fff;
 }
-.chat-app{
-  max-width:520px;
-  height:100vh;
-  margin:auto;
-  background:#fff;
-  display:flex;
-  flex-direction:column;
-}
-
-/* HEADER */
 header{
-  background:#075e54;
-  color:#fff;
-  padding:12px;
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
+  background:#075e54;color:#fff;padding:12px;
+  display:flex;justify-content:space-between;align-items:center;
 }
-header .info{
-  font-size:14px;
-}
-header button{
-  background:#ff4d4f;
-  border:none;
-  color:#fff;
-  padding:6px 10px;
-  border-radius:5px;
-  cursor:pointer;
-}
-
-/* MESSAGES */
+header small{font-size:12px}
 #messages{
-  flex:1;
-  padding:10px;
-  overflow-y:auto;
-  background:#efeae2;
+  flex:1;padding:10px;overflow-y:auto;background:#efeae2;
 }
 .msg{
-  max-width:75%;
-  padding:8px 12px;
-  margin:6px 0;
-  border-radius:10px;
-  font-size:14px;
-  line-height:1.4;
-  word-wrap:break-word;
+  max-width:75%;padding:8px 12px;margin:6px 0;
+  border-radius:10px;font-size:14px;
 }
-.me{
-  background:#dcf8c6;
-  margin-left:auto;
-}
-.other{
-  background:#fff;
-}
-.sender{
-  font-size:11px;
-  color:#555;
-  margin-bottom:3px;
-}
-
-/* TYPING */
-#typing{
-  font-size:12px;
-  color:#555;
-  padding:4px 10px;
-}
-
-/* FOOTER */
+.me{background:#dcf8c6;margin-left:auto}
+.other{background:#fff}
+.time{font-size:10px;color:#555;margin-top:2px}
 footer{
-  display:flex;
-  padding:8px;
-  background:#f0f0f0;
+  display:flex;padding:8px;background:#f0f0f0;
 }
 footer input{
-  flex:1;
-  padding:10px;
-  border-radius:20px;
-  border:1px solid #ccc;
-  outline:none;
+  flex:1;padding:10px;border-radius:20px;border:1px solid #ccc;
 }
 footer button{
-  margin-left:8px;
-  background:#075e54;
-  color:#fff;
-  border:none;
-  padding:10px 16px;
-  border-radius:50%;
-  cursor:pointer;
+  margin-left:8px;background:#075e54;color:#fff;
+  border:none;padding:10px 16px;border-radius:50%;
 }
-
-/* MOBILE FIX */
-@media(max-width:600px){
-  .chat-app{max-width:100%}
-}
+#typing{font-size:12px;color:#555;padding:4px 10px}
 </style>
 </head>
 
 <body>
+<div class="chat">
+<header>
+  <div>
+    <b id="group"></b><br>
+    <small><span id="online">0</span> online</small>
+  </div>
+  <button onclick="logout()">Logout</button>
+</header>
 
-<div class="chat-app">
-  <header>
-    <div class="info">
-      <b id="groupName"></b><br>
-      <small id="status">Online</small>
-    </div>
-    <button onclick="logout()">Logout</button>
-  </header>
+<div id="messages"></div>
+<div id="typing"></div>
 
-  <div id="messages"></div>
-  <div id="typing"></div>
-
-  <footer>
-    <input id="msgInput" placeholder="Type a message">
-    <button onclick="send()">➤</button>
-  </footer>
+<footer>
+  <input id="input" placeholder="Type message">
+  <button onclick="send()">➤</button>
+</footer>
 </div>
 
 <script>
 const API = "https://university-chat-production.up.railway.app";
-
-// SESSION CHECK
 const user = JSON.parse(localStorage.getItem("user"));
-if(!user){
-  location.href="index.html";
-}
+if(!user) location.href="index.html";
 
-groupName.innerText = "Group: " + user.groupName;
+group.innerText = "Group: " + user.groupName;
 
-// SOCKET
 const socket = io(API);
 socket.emit("join", user.groupName);
 
-// RECEIVE MESSAGE
-socket.on("receive", data => {
-  addMessage(data);
-});
+socket.on("online", n => online.innerText = n);
 
-// DELETE MESSAGE
+socket.on("receive", msg => add(msg));
 socket.on("deleted", id => {
   const el = document.getElementById(id);
   if(el) el.remove();
 });
 
-// TYPING INDICATOR (basic)
-let typingTimeout;
-msgInput.addEventListener("input",()=>{
-  socket.emit("typing", user.username);
-  clearTimeout(typingTimeout);
-  typingTimeout = setTimeout(()=>{
-    typing.innerText="";
-  },1000);
+let typingTimer;
+input.addEventListener("input", ()=>{
+  socket.emit("typing",{ groupName:user.groupName, username:user.username });
+  clearTimeout(typingTimer);
+  typingTimer = setTimeout(()=>typing.innerText="",1000);
 });
 
 socket.on("typing", name=>{
@@ -171,49 +92,53 @@ socket.on("typing", name=>{
   setTimeout(()=>typing.innerText="",1000);
 });
 
-// SEND MESSAGE
 function send(){
-  const text = msgInput.value.trim();
-  if(text==="") return;
+  const text = input.value.trim();
+  if(!text) return;
 
   socket.emit("send",{
     text,
     sender:user.username,
     groupName:user.groupName
   });
-  msgInput.value="";
+  input.value="";
 }
 
-// ENTER KEY SEND
-msgInput.addEventListener("keydown",e=>{
+input.addEventListener("keydown",e=>{
   if(e.key==="Enter") send();
 });
 
-// ADD MESSAGE TO UI
-function addMessage(m){
+function add(m){
   const div = document.createElement("div");
   div.className = "msg " + (m.sender===user.username?"me":"other");
   div.id = m._id;
 
+  const time = new Date(m.createdAt).toLocaleTimeString([],{
+    hour:"2-digit",minute:"2-digit"
+  });
+
   div.innerHTML = `
-    <div class="sender">${m.sender}</div>
-    <div>${m.text}</div>
+    <b>${m.sender}</b><br>
+    ${m.text}
+    <div class="time">${time}</div>
   `;
 
   if(m.sender===user.username){
-    div.onclick = ()=>socket.emit("delete", m._id);
+    div.onclick = ()=>socket.emit("delete",{
+      id:m._id,
+      username:user.username,
+      groupName:user.groupName
+    });
   }
 
   messages.appendChild(div);
   messages.scrollTop = messages.scrollHeight;
 }
 
-// LOGOUT
 function logout(){
   localStorage.removeItem("user");
   location.href="index.html";
 }
 </script>
-
 </body>
 </html>

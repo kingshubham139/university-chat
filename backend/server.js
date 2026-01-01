@@ -1,6 +1,4 @@
-// ===============================
-// Imports
-// ===============================
+// ================= IMPORTS =================
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
@@ -9,133 +7,72 @@ const http = require("http");
 const { Server } = require("socket.io");
 require("dotenv").config();
 
-// ===============================
-// Models
-// ===============================
+// ================= MODELS =================
 const User = require("./models/user");
 const Message = require("./models/message");
 const Group = require("./models/group");
 
-// ===============================
-// App & Server
-// ===============================
+// ================= APP =================
 const app = express();
 const server = http.createServer(app);
 
 const io = new Server(server, {
-  cors: {
-    origin: "*", // later you can restrict to Netlify URL
-    methods: ["GET", "POST", "PUT", "DELETE"]
-  }
+  cors: { origin: "*", methods: ["GET", "POST"] }
 });
 
-// ===============================
-// Middleware
-// ===============================
 app.use(express.json());
-app.use(cors({
-  origin: "*",
-  methods: ["GET", "POST", "PUT", "DELETE"],
-  credentials: true
-}));
+app.use(cors());
 
-// ===============================
-// Root Health Check
-// ===============================
+// ================= HEALTH CHECK =================
 app.get("/", (req, res) => {
-  res.send("University Chat Backend is running 🚀");
+  res.send("University Chat Backend Running 🚀");
 });
 
-// ===============================
-// MongoDB Connection
-// ===============================
-mongoose
-  .connect(process.env.MONGO_URI)
+// ================= DATABASE =================
+mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log("✅ MongoDB Connected"))
-  .catch(err => console.error("❌ MongoDB Error:", err));
+  .catch(err => console.error(err));
 
-// ===============================
-// AUTH: Register
-// ===============================
+// ================= AUTH =================
 app.post("/register", async (req, res) => {
-  try {
-    const { username, password, groupName } = req.body;
-
-    const existingUser = await User.findOne({ username });
-    if (existingUser) {
-      return res.json({ success: false, msg: "User already exists" });
-    }
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    let group = await Group.findOne({ groupName });
-    if (!group) {
-      await Group.create({ groupName, createdBy: username });
-    } else {
-      group.membersCount += 1;
-      await group.save();
-    }
-
-    const user = await User.create({
-      username,
-      password: hashedPassword,
-      groupName
-    });
-
-    res.json({ success: true, user });
-  } catch (err) {
-    res.json({ success: false, msg: "Registration failed" });
-  }
-});
-
-// ===============================
-// AUTH: Login
-// ===============================
-app.post("/login", async (req, res) => {
   const { username, password, groupName } = req.body;
 
-  const user = await User.findOne({ username, groupName });
-  if (!user) {
-    return res.json({ success: false, msg: "Invalid credentials" });
-  }
+  if (await User.findOne({ username }))
+    return res.json({ success: false, msg: "User exists" });
 
-  if (user.isBlocked) {
-    return res.json({ success: false, msg: "You are blocked by admin" });
-  }
+  const hash = await bcrypt.hash(password, 10);
 
-  const isMatch = await bcrypt.compare(password, user.password);
-  if (!isMatch) {
-    return res.json({ success: false, msg: "Wrong password" });
-  }
+  let group = await Group.findOne({ groupName });
+  if (!group) await Group.create({ groupName, createdBy: username });
+  else { group.membersCount++; await group.save(); }
+
+  const user = await User.create({
+    username,
+    password: hash,
+    groupName
+  });
 
   res.json({ success: true, user });
 });
 
-// ===============================
-// ADMIN: Login
-// ===============================
-app.post("/admin/login", async (req, res) => {
-  const { username, password } = req.body;
+app.post("/login", async (req, res) => {
+  const { username, password, groupName } = req.body;
 
-  const admin = await User.findOne({ username, role: "admin" });
-  if (!admin) {
-    return res.json({ success: false });
-  }
+  const user = await User.findOne({ username, groupName });
+  if (!user) return res.json({ success: false, msg: "Invalid login" });
 
-  const isMatch = await bcrypt.compare(password, admin.password);
-  if (!isMatch) {
-    return res.json({ success: false });
-  }
+  const ok = await bcrypt.compare(password, user.password);
+  if (!ok) return res.json({ success: false, msg: "Wrong password" });
 
-  res.json({ success: true });
+  if (user.isBlocked)
+    return res.json({ success: false, msg: "Blocked by admin" });
+
+  res.json({ success: true, user });
 });
 
-// ===============================
-// ADMIN: Messages
-// ===============================
+// ================= ADMIN =================
 app.get("/admin/messages", async (req, res) => {
-  const messages = await Message.find().sort({ createdAt: -1 });
-  res.json(messages);
+  res.json(await Message.find().sort({ createdAt: -1 }));
 });
 
 app.delete("/admin/message/:id", async (req, res) => {
@@ -143,39 +80,50 @@ app.delete("/admin/message/:id", async (req, res) => {
   res.json({ success: true });
 });
 
-// ===============================
-// Socket.IO (Real-time Chat)
-// ===============================
-io.on("connection", (socket) => {
-  console.log("🟢 User connected");
+// ================= SOCKET.IO =================
+const onlineUsers = {}; // groupName -> count
 
+io.on("connection", (socket) => {
   socket.on("join", (groupName) => {
     socket.join(groupName);
+    onlineUsers[groupName] = (onlineUsers[groupName] || 0) + 1;
+    io.to(groupName).emit("online", onlineUsers[groupName]);
   });
 
   socket.on("send", async (data) => {
     const msg = await Message.create({
       text: data.text,
       sender: data.sender,
-      groupName: data.groupName
+      groupName: data.groupName,
+      createdAt: new Date()
     });
 
     io.to(data.groupName).emit("receive", msg);
   });
 
-  socket.on("delete", async (id) => {
-    await Message.findByIdAndDelete(id);
-    io.emit("deleted", id);
+  socket.on("typing", (data) => {
+    socket.to(data.groupName).emit("typing", data.username);
   });
 
-  socket.on("disconnect", () => {
-    console.log("🔴 User disconnected");
+  socket.on("delete", async (data) => {
+    const msg = await Message.findById(data.id);
+    if (msg && msg.sender === data.username) {
+      await Message.findByIdAndDelete(data.id);
+      io.to(data.groupName).emit("deleted", data.id);
+    }
+  });
+
+  socket.on("disconnecting", () => {
+    for (const room of socket.rooms) {
+      if (onlineUsers[room]) {
+        onlineUsers[room]--;
+        io.to(room).emit("online", onlineUsers[room]);
+      }
+    }
   });
 });
 
-// ===============================
-// Start Server (Railway Safe)
-// ===============================
+// ================= START =================
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log("🚀 Server running on port", PORT);
