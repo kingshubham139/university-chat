@@ -1,53 +1,43 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>University Chat | Login</title>
+<title>University Chat</title>
 
 <style>
 body{
-  margin:0;
-  height:100vh;
-  display:flex;
-  justify-content:center;
-  align-items:center;
+  margin:0;height:100vh;
+  display:flex;justify-content:center;align-items:center;
   font-family:Arial;
-  background:linear-gradient(135deg,#1e3c72,#2a5298);
+  background:linear-gradient(135deg,#075e54,#128c7e);
 }
 .box{
-  background:#fff;
-  width:320px;
-  padding:25px;
-  border-radius:12px;
-  box-shadow:0 0 20px rgba(0,0,0,.3);
+  background:#fff;width:320px;
+  padding:25px;border-radius:12px;
 }
-h2{text-align:center;margin-bottom:20px}
 input,button{
-  width:100%;
-  padding:10px;
-  margin:8px 0;
-  border-radius:6px;
-  border:1px solid #ccc;
+  width:100%;padding:10px;margin:8px 0;
 }
 button{
-  background:#1e3c72;
-  color:#fff;
-  border:none;
-  cursor:pointer;
+  background:#075e54;color:#fff;
+  border:none;cursor:pointer;
 }
-button:hover{opacity:.9}
 </style>
 </head>
 
 <body>
 <div class="box">
   <h2>University Chat</h2>
+
   <input id="username" placeholder="Username">
   <input id="password" type="password" placeholder="Password">
   <input id="groupName" placeholder="Group Name">
+
   <button onclick="login()">Login</button>
   <button onclick="register()">Register</button>
+
+  <p id="msg"></p>
 </div>
 
 <script>
@@ -63,13 +53,13 @@ function login(){
       groupName:groupName.value
     })
   })
-  .then(r=>r.json())
-  .then(d=>{
-    if(d.success){
-      localStorage.setItem("user",JSON.stringify(d.user));
-      location.href="chat.html";
+  .then(res=>res.json())
+  .then(data=>{
+    if(data.success){
+      localStorage.setItem("user", JSON.stringify(data.user));
+      window.location.href = "chat.html";
     }else{
-      alert(d.msg || "Login failed");
+      msg.innerText = data.msg || "Login failed";
     }
   });
 }
@@ -84,9 +74,15 @@ function register(){
       groupName:groupName.value
     })
   })
-  .then(r=>r.json())
-  .then(d=>{
-    alert(d.success ? "Registered successfully" : d.msg);
+  .then(res=>res.json())
+  .then(data=>{
+    if(data.success){
+      // auto-login after register (WhatsApp-like)
+      localStorage.setItem("user", JSON.stringify(data.user));
+      window.location.href = "chat.html";
+    }else{
+      msg.innerText = data.msg || "Registration failed";
+    }
   });
 }
 </script>

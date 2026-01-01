@@ -1,30 +1,13 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Admin Panel</title>
 
 <style>
-body{
-  font-family:Arial;
-  background:#222;
-  color:#fff;
-  padding:20px;
-}
-.card{
-  background:#333;
-  padding:10px;
-  margin:8px 0;
-  border-radius:6px;
-}
-button{
-  background:#ff4d4f;
-  border:none;
-  padding:5px 10px;
-  color:#fff;
-  cursor:pointer;
-}
+body{font-family:Arial;background:#222;color:#fff;padding:20px}
+.card{background:#333;padding:10px;margin:8px;border-radius:6px}
+button{background:red;color:#fff;border:none;padding:5px}
 </style>
 </head>
 
@@ -41,7 +24,8 @@ fetch(API+"/admin/messages")
   data.forEach(m=>{
     list.innerHTML += `
       <div class="card">
-        <b>${m.groupName}</b> | ${m.sender}: ${m.text}
+        <b>${m.groupName}</b><br>
+        ${m.sender}: ${m.text}
         <button onclick="del('${m._id}')">Delete</button>
       </div>
     `;
