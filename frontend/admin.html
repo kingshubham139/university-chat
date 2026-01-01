@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head><title>Admin</title></head>
+<body>
+<h2>Admin Panel</h2>
+<div id="d"></div>
+<script>
+const API="YOUR_RAILWAY_URL";
+fetch(API+"/admin/messages")
+.then(r=>r.json()).then(m=>{
+ m.forEach(x=>{
+  d.innerHTML+=`${x.groupName}: ${x.sender} - ${x.text}
+  <button onclick="del('${x._id}')">X</button><br>`;
+ });
+});
+function del(id){
+ fetch(API+"/admin/message/"+id,{method:"DELETE"})
+ .then(()=>location.reload());
+}
+</script>
+</body>
+</html>

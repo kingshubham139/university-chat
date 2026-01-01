@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>University Chat</title>
+<style>
+body{margin:0;height:100vh;display:flex;align-items:center;justify-content:center;
+background:linear-gradient(135deg,#1e3c72,#2a5298);font-family:Arial}
+.box{background:#fff;padding:25px;border-radius:10px;width:300px}
+input,button{width:100%;padding:10px;margin:8px 0}
+button{background:#1e3c72;color:#fff;border:none}
+</style>
+</head>
+<body>
+<div class="box">
+<h2>Login / Register</h2>
+<input id="u" placeholder="Username">
+<input id="p" type="password" placeholder="Password">
+<input id="g" placeholder="Group Name">
+<button onclick="login()">Login</button>
+<button onclick="register()">Register</button>
+</div>
+
+<script>
+const API="YOUR_RAILWAY_URL";
+
+function login(){
+fetch(API+"/login",{method:"POST",headers:{'Content-Type':'application/json'},
+body:JSON.stringify({username:u.value,password:p.value,groupName:g.value})})
+.then(r=>r.json()).then(d=>{
+ if(d.success){localStorage.user=JSON.stringify(d.user);location="chat.html";}
+ else alert("Login failed");
+});
+}
+
+function register(){
+fetch(API+"/register",{method:"POST",headers:{'Content-Type':'application/json'},
+body:JSON.stringify({username:u.value,password:p.value,groupName:g.value})})
+.then(r=>r.json()).then(d=>alert(d.success?"Registered":"Error"));
+}
+</script>
+</body>
+</html>
